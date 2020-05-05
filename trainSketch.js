@@ -77,7 +77,7 @@ function setup() {
   background(0);
 
   c = {
-    bg: color(0, 0, 0),
+    bg: color(30, 30, 30),
     line: color(255, 255, 255),
     inTransit: color(255, 120, 120),
     inStation: color(120, 255, 120),
