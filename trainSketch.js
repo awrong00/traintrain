@@ -1,151 +1,232 @@
+//fixed variables
 var preset = {
-  roles: ['Clean',
+  roles: [
+    'Clean',
     'Drink',
     'Food',
     'Fun'
   ],
-
   stayTime: 5,
   transitTime: 30,
   jumpStartTime: 20,
-  psgNum: 15
-
-
+  psgNum: 15,
+  seatNum: 20,
+  initialCleanRatio: 0.8
 };
 
+var c;
 
-var curRole = 0;
-var inTransit = true;
+var ui = {
+  size: [600, 400],
+  marg: 10,
+  player1: [0, 0, 1 / 6, 1 / 4],
+  deck: [0, 1 / 4, 1, 3 / 4],
+  trainState: [3 / 4, 0, 1 / 4, 3 / 16],
+  aisle: 1 / 4
+}
+
+//changing variables
+var state = {
+  clean: [],
+  seated: [],
+  coin: 0,
+  curRole: 0,
+  inTransit: 1,
+  boarding: 0
+}
+
+var yourState = {
+  x: 0,
+  y: 0,
+  speed: 10,
+  nearestSeat: NaN
+}
+
+//passenger states
+var psgState = {
+  inTime: [],
+  inPos: [],
+  dir: [],
+  need: [],
+  seated: [],
+  seatNum: []
+}
+
+//time elements
 var t0 = 0;
 var t1;
-var money = 0;
-var dirty = [];
-var seated = [];
-var psg = [];
-var startBoarding = 0;
+
+function createNoiseMap(size) {
+  var arr = [];
+  for (var mapY = 0; mapY < size[1]; mapY++) {
+    var arr2 = [];
+    for (var mapX = 0; mapX < size[0]; mapX++) {
+      var noiseScale = 0.02;
+      var noiseVal = noise(mapX * noiseScale, mapY * noiseScale);
+      arr2.push(noiseVal * 0.75);
+    }
+    arr.push(arr2);
+  }
+  return arr;
+}
 
 function setup() {
-  createCanvas(800, 600);
-
   frameRate(24);
   textAlign(LEFT, TOP);
-  for (var j = 0; j < 20; j++) {
-    dirty.push(int(random(0, 2)));
-    seated.push(0);
-  }
-  for (var m = 0; m < preset.psgNum; m++) {
-    psg.push(1);
+  createCanvas(ui.size[0], ui.size[1]);
+  background(0);
 
+  c = {
+    bg: color(0, 0, 0),
+    line: color(255, 255, 255),
+    inTransit: color(255, 120, 120),
+    inStation: color(120, 255, 120),
+    roles: [color(120, 120, 255),
+      color(120, 255, 255),
+      color(255, 255, 120),
+      color(255, 120, 255)
+    ],
+    dirt: createNoiseMap(ui.size)
+  };
+
+  //set up state before game
+  for (var seatNum = 0; seatNum < preset.seatNum; seatNum++) {
+    var isClean = random(0, 1);
+    if (isClean < preset.initialCleanRatio) {
+      isClean = 1;
+    } else {
+      isClean = 0;
+    }
+    state.clean.push(isClean);
+    state.seated.push(0);
   }
+
+  for (var psgNum = 0; psgNum < preset.psgNum; psgNum++) {
+    var inTime = random(0, preset.stayTime);
+    var inPos = ui.h * ui.deck * ui.aisle - ui.marg * 2;
+    inPos = random(-inPos / 2, inPos / 2);
+    psgState.inTime.push(inTime);
+    psgState.inPos.push(inPos);
+    psgState.dir.push(1);
+    psgState.need.push(0);
+    psgState.seated.push(0);
+  }
+}
+
+function keyPressed() {
 
 }
 
 function draw() {
-  textSize(12);
-  t = millis() / 1000 + preset.jumpStartTime;
-  t1 = t - t0;
-
-
-  if (inTransit == true && int(t1) == preset.transitTime + 1) {
-    inTransit = false;
-    t0 = t;
-    t1 = 0;
-    startBoarding = 1;
-  } else if (inTransit == false && int(t1) == preset.stayTime + 1) {
-    inTransit = true;
-    t0 = t;
-    t1 = 0;
-  }
-
-  background(220);
-
-  push();
-  translate(20, 20);
+  textSize(10);
+  background(c.bg);
   noFill();
-  stroke(0);
-  rect(0, 0, 100, 150);
+  stroke(c.line);
+  drawBox(ui.player1);
+  drawBox(ui.trainState);
+  drawBox(ui.deck);
 
-  noStroke();
-  fill(0);
-  text('YOU\nRole: ' + preset.roles[curRole], 5, 5);
-  pop();
-
+  //deck
   push();
-  translate(580, 20);
+  translate(ui.size[0] * ui.deck[0], ui.size[1] * ui.deck[1]);
+  translate(ui.marg, ui.marg);
+  var deckW = ui.size[0] * ui.deck[2] - ui.marg * 2;
+  var deckH = ui.size[1] * ui.deck[3] - ui.marg * 2;
+  var seatW = deckW / int(preset.seatNum / 2);
+  var seatH = deckH * (1 - ui.aisle) / 2;
+  var seat2Y = deckH - seatH;
+  var aisleH = deckH - seatH * 2;
 
-  noFill();
-  stroke(0);
-  rect(0, 0, 200, 50);
+  for (var seatNum = 0; seatNum < preset.seatNum; seatNum++) {
+    var seatX = int(seatNum / 2) * seatW;
+    var seatY = 0;
 
-  noStroke();
-  fill(0);
-  if (inTransit) {
-    text('IN TRANSIT\nArriving in ' + (preset.transitTime - int(t1)) + 's', 5, 5);
-  } else {
-    text('IN STATION\nDeparting in ' + (preset.stayTime - int(t1)) + 's', 5, 5);
-  }
-
-  pop();
-
-  push();
-  noFill();
-  stroke(0);
-  translate(20, 190);
-  rect(0, 0, 760, 200);
-
-  for (var i = 0; i < 20; i++) {
-    push();
-    if (i % 2) {
-      translate(50 * (i - 1) / 2, 125);
-
-    } else {
-      translate(50 * i / 2, 0);
+    if (seatNum % 2) {
+      seatY = seat2Y;
     }
-    noFill();
-    if (dirty[i]) {
-      fill(150);
-    } else if (seated[i]) {
-      fill(10);
-    }
-    rect(0, 0, 50, 75);
-    pop();
-  }
 
-  translate(0, 100);
-  strokeWeight(2);
-  if (inTransit && startBoarding) {
-    for (var p = 0; p < psg.length; p++) {
-
-
-
-
-
-      if (psg[p]) {
-        var pos = t1 * 100 % 710 - p * 15;
-        if (pos > 0 && pos < 500) {
-          var table = int(pos / 50);
-          if (seated[table * 2] == 0 && dirty[table * 2] == 0) {
-            psg[p] = 0;
-            seated[table * 2] = 1;
-          } else if (seated[table * 2 + 1] == 0 && dirty[table * 2 + 1] == 0) {
-            psg[p] = 0;
-            seated[table * 2 + 1] = 1;
+    if (state.clean[seatNum] == 0) {
+      push();
+      noStroke();
+      for (var dirtH = 0; dirtH < seatH; dirtH++) {
+        for (var dirtW = 0; dirtW < seatW; dirtW++) {
+          if (dirtW % 5 == 0 && dirtH % 5 == 0) {
+            fill(c.dirt[seatY + dirtH][seatX + dirtW] * 255);
+            rect(seatX + dirtW, seatY + dirtH, 5, 5);
           }
-          circle(pos, 0, 10);
-
         }
       }
+      pop();
     }
 
+    stroke(c.line);
+    push();
+    if (seatNum == yourState.nearestSeat) {
+      strokeWeight(3);
+    }
+    rect(seatX, seatY, seatW, seatH);
+    pop();
+    //pop();
   }
-  pop();
 
-
+  //deck - you
   push();
-  translate(140, 20);
-  noStroke();
-  fill(0);
-  textSize(30);
-  text('$' + money, 5, 5);
+  if (keyIsDown(RIGHT_ARROW)) {
+    yourState.x = yourState.x + yourState.speed;
+  }
+
+  if (keyIsDown(LEFT_ARROW)) {
+    yourState.x = yourState.x - yourState.speed;
+  }
+
+  if (keyIsDown(DOWN_ARROW)) {
+    yourState.y = yourState.y + yourState.speed;
+  }
+
+  if (keyIsDown(UP_ARROW)) {
+    yourState.y = yourState.y - yourState.speed;
+  }
+
+  yourState.x = constrain(yourState.x, -deckW / 2, deckW / 2);
+  yourState.y = constrain(yourState.y, -aisleH / 2, aisleH / 2);
+  
+  var nearestSeat = int((yourState.x + deckW/2) / seatW) * 2
+  if (yourState.y < -aisleH/8){
+    yourState.nearestSeat = nearestSeat;
+  } else if (yourState.y > aisleH/8){
+    yourState.nearestSeat = nearestSeat + 1;
+  } else { 
+    yourState.nearestSeat = NaN;
+  }
+  
+  translate(deckW / 2, deckH / 2);
+  fill(c.roles[state.curRole]);
+  circle(yourState.x, yourState.y, 15);
   pop();
+  
+  
+
+  pop();
+
+
+  noStroke();
+  fill(c.roles[state.curRole]);
+  addText('YOU\nRole: ' + preset.roles[state.curRole], ui.player1);
+
+  if (state.inTransit) {
+    fill(c.inTransit);
+    addText('IN TRANSIT\nArriving in ' + 's', ui.trainState);
+  } else {
+    fill(c.inTrainsit);
+    addText('IN STATION\nDeparting in ' + 's', ui.trainState);
+  }
+}
+
+
+function drawBox(val) {
+  rect(ui.size[0] * val[0] + ui.marg, ui.size[1] * val[1] + ui.marg, ui.size[0] * val[2] - ui.marg * 2, ui.size[1] * val[3] - ui.marg * 2);
+}
+
+function addText(txt, val) {
+  text(txt, ui.size[0] * val[0] + ui.marg * 2, ui.size[1] * val[1] + ui.marg * 2);
 }
