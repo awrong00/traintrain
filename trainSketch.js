@@ -115,7 +115,7 @@ function setup() {
 
 function keyReleased() {
   if (keyCode === 32) {
-    if(yourState.nearestSeat && state.clean[yourState.nearestSeat] == 0){
+    if(typeof yourState.nearestSeat == 'number' && state.clean[yourState.nearestSeat] == 0){
       state.clean[yourState.nearestSeat]++;
     }
   }
