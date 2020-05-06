@@ -113,8 +113,13 @@ function setup() {
   }
 }
 
-function keyPressed() {
-
+function keyReleased() {
+  if (keyCode === 32) {
+    if(yourState.nearestSeat && state.clean[yourState.nearestSeat] == 0){
+      state.clean[yourState.nearestSeat]++;
+    }
+  }
+  return false;
 }
 
 function draw() {
@@ -198,6 +203,8 @@ function draw() {
   } else { 
     yourState.nearestSeat = NaN;
   }
+  
+  
   
   translate(deckW / 2, deckH / 2);
   fill(c.roles[state.curRole]);
